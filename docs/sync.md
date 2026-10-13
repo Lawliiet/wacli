@@ -11,7 +11,7 @@ Remote logout stops sync and emits `logged_out`; it retains the existing success
 ## Command
 
 ```bash
-wacli sync [--once] [--follow] [--idle-exit 30s] [--max-reconnect 5m] [--stale-threshold DURATION] [--presence-mode normal|quiet] [--send-spacing DURATION|MIN-MAX] [--max-messages N] [--max-db-size SIZE] [--download-media] [--refresh-contacts] [--refresh-groups] [--refresh-channels] [--events] [--webhook URL] [--webhook-secret SECRET] [--webhook-events LIST]
+wacli sync [--once] [--follow] [--idle-exit 30s] [--max-reconnect 5m] [--stale-threshold DURATION] [--presence-mode normal|quiet] [--send-spacing DURATION|MIN-MAX] [--max-messages N] [--max-db-size SIZE] [--download-media] [--refresh-contacts] [--refresh-groups] [--refresh-channels] [--events] [--webhook URL] [--webhook-secret SECRET | --webhook-secret-file PATH] [--webhook-events LIST]
 ```
 
 ## Modes
@@ -30,6 +30,7 @@ wacli sync [--once] [--follow] [--idle-exit 30s] [--max-reconnect 5m] [--stale-t
 - `--refresh-channels` fetches subscribed WhatsApp Channels live and updates local chat rows.
 - `--webhook URL` posts successfully stored live message events as JSON on a bounded background worker. The payload includes `ChatName` when a locally resolved chat name is available.
 - `--webhook-secret SECRET` signs webhook payloads with `X-Wacli-Signature: sha256=<hmac>`.
+- `--webhook-secret-file PATH` reads the secret from a file (surrounding whitespace is trimmed), so it does not appear in the process list. It is mutually exclusive with `--webhook-secret`, requires `--webhook`, and fails if the file is missing, empty, or accessible by group or others (`chmod 600`).
 - `--webhook-events LIST` selects which event types are posted, as a comma-separated list of `message`, `receipt`, and `chat_presence`. The default is `message`, which preserves the earlier message event shape. A list that omits `message` stops message posts, so `--webhook-events receipt` posts receipts only. `chat_presence` needs `--presence-mode normal` (the default): WhatsApp only sends typing notifications to devices that mark themselves available. See [Webhook payloads](#webhook-payloads).
 - Webhook delivery is best-effort: failures, request timeouts, and full-queue drops are logged as warnings and do not stop sync. Retries/backoff are intentionally out of scope for this flag.
 - If neither storage cap is configured, sync prints one warning because WhatsApp history can grow the local database substantially.

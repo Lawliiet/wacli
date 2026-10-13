@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Sync: add `--webhook-secret-file` to read the webhook HMAC secret from a private file instead of the process list.
+
 ## 0.21.0 - 2026-10-11
 
 **Highlights:** opt-in full-history pairing, live presence events, media retry filters, and Go standard-library security fixes.

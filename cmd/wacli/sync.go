@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"runtime"
+	"strings"
 	"time"
 
 	appPkg "github.com/openclaw/wacli/internal/app"
@@ -24,6 +27,7 @@ func newSyncCmd(flags *rootFlags) *cobra.Command {
 	var refreshChannels bool
 	var webhookURL string
 	var webhookSecret string
+	var webhookSecretFile string
 	var webhookAllowPrivate bool
 	var webhookEventsFlag string
 	var sendSpacingFlag string
@@ -41,8 +45,20 @@ func newSyncCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if webhookSecret != "" && webhookSecretFile != "" {
+				return fmt.Errorf("--webhook-secret and --webhook-secret-file are mutually exclusive")
+			}
 			if webhookSecret != "" && webhookURL == "" {
 				return fmt.Errorf("--webhook-secret requires --webhook")
+			}
+			if webhookSecretFile != "" && webhookURL == "" {
+				return fmt.Errorf("--webhook-secret-file requires --webhook")
+			}
+			if webhookSecretFile != "" {
+				webhookSecret, err = readWebhookSecretFile(webhookSecretFile)
+				if err != nil {
+					return err
+				}
 			}
 			if cmd.Flags().Changed("webhook-events") && webhookURL == "" {
 				return fmt.Errorf("--webhook-events requires --webhook")
@@ -153,9 +169,39 @@ func newSyncCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&refreshChannels, "refresh-channels", false, "refresh subscribed channels (live) into local DB")
 	cmd.Flags().StringVar(&webhookURL, "webhook", "", "URL to POST live message JSON")
 	cmd.Flags().StringVar(&webhookSecret, "webhook-secret", "", "HMAC-SHA256 secret for X-Wacli-Signature header")
+	cmd.Flags().StringVar(&webhookSecretFile, "webhook-secret-file", "", "read the webhook HMAC secret from a file (must not be group/other accessible); keeps it out of the process list")
 	cmd.Flags().BoolVar(&webhookAllowPrivate, "webhook-allow-private", false, "allow webhook URLs that resolve to localhost or private networks")
 	cmd.Flags().StringVar(&webhookEventsFlag, "webhook-events", string(appPkg.SyncWebhookEventMessage), "comma-separated event types to POST: message, receipt, chat_presence")
 	cmd.Flags().Int64Var(&storage.maxMessages, "max-messages", 0, "maximum total messages to keep in the local DB before sync stops (0 = unlimited, or WACLI_SYNC_MAX_MESSAGES)")
 	cmd.Flags().StringVar(&storage.maxDBSize, "max-db-size", "", "maximum wacli.db disk usage before sync stops, e.g. 500MB or 2GB (default: WACLI_SYNC_MAX_DB_SIZE or unlimited)")
 	return cmd
+}
+
+// readWebhookSecretFile returns the trimmed content of path. The secret is never
+// included in errors.
+func readWebhookSecretFile(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", fmt.Errorf("--webhook-secret-file: %w", err)
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return "", fmt.Errorf("--webhook-secret-file: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("--webhook-secret-file %s is not a regular file", path)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0 {
+		return "", fmt.Errorf("--webhook-secret-file %s is accessible by group or others (mode %04o); run: chmod 600 %s", path, info.Mode().Perm(), path)
+	}
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return "", fmt.Errorf("--webhook-secret-file: %w", err)
+	}
+	secret := strings.TrimSpace(string(data))
+	if secret == "" {
+		return "", fmt.Errorf("--webhook-secret-file %s is empty", path)
+	}
+	return secret, nil
 }
