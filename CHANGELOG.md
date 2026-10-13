@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Sync: add `--webhook-secret-file` to read the webhook HMAC secret from a private file instead of the process list.
 - Messages: add bounded chronological search context and exact local chat/contact name filters with explicit ambiguity errors.
 - Messages: add a content-free incremental journal, bounded drains, retention expiry, and identity reconciliation.
 - Messages: add bounded cursor reads for list, search, and export, with explicit archive invalidation and shared successful-sync freshness.
