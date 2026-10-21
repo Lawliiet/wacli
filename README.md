@@ -85,6 +85,7 @@ Write commands take a per-store lock. After a `sync --follow` process finishes s
 | [`messages`](docs/messages.md), [`calls`](docs/calls.md) | Search, inspect, export, and manage local records. |
 | [`send`](docs/send.md), [`media`](docs/media.md) | Send text and files or download synced media. |
 | [`contacts`](docs/contacts.md), [`chats`](docs/chats.md) | Find people and manage local or remote chat state. |
+| [`lists`](docs/chats.md#chat-lists) | Read your WhatsApp chat lists (Favorites, custom lists) and their chats. |
 | [`groups`](docs/groups.md), [`channels`](docs/channels.md) | Inspect and manage groups, communities, and channels. |
 | [`profile`](docs/profile.md), [`presence`](docs/presence.md) | Manage profile details and chat presence. |
 | [`store`](docs/store.md), [`doctor`](docs/doctor.md) | Inspect local storage and diagnose the setup. |

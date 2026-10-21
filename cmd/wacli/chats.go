@@ -44,6 +44,7 @@ func newChatsListCmd(flags *rootFlags) *cobra.Command {
 	var pinned, noPinned bool
 	var muted, noMuted bool
 	var unread, noUnread bool
+	var list string
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List chats",
@@ -78,6 +79,13 @@ func newChatsListCmd(flags *rootFlags) *cobra.Command {
 				Muted:    boolFilter(muted, noMuted),
 				Unread:   boolFilter(unread, noUnread),
 			}
+			if strings.TrimSpace(list) != "" {
+				resolved, err := a.DB().ResolveChatList(list)
+				if err != nil {
+					return err
+				}
+				filter.ListID = resolved.ID
+			}
 			chats, err := a.DB().ListChatsFiltered(filter)
 			if err != nil {
 				return err
@@ -111,6 +119,7 @@ func newChatsListCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&noMuted, "no-muted", false, "exclude muted chats")
 	cmd.Flags().BoolVar(&unread, "unread", false, "show only unread chats")
 	cmd.Flags().BoolVar(&noUnread, "no-unread", false, "exclude unread chats")
+	cmd.Flags().StringVar(&list, "list", "", "show only chats in this chat list (id or name; see `wacli lists`)")
 	return cmd
 }
 

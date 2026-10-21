@@ -43,6 +43,7 @@ var schemaMigrations = []migration{
 	{version: 27, name: "repair placeholder chat activity", up: migratePlaceholderChatActivity},
 	{version: 28, name: "unavailable app state keys", up: migrateUnavailableAppStateKeys},
 	{version: 29, name: "message receipts", up: ensureMessageReceiptsTable},
+	{version: 30, name: "chat lists", up: ensureChatListTables},
 }
 
 func migratePlaceholderChatActivity(d *DB) error {
@@ -141,6 +142,44 @@ func ensureMessageReceiptsTable(d *DB) error {
 	}
 	if _, err := d.sql.Exec(`CREATE INDEX IF NOT EXISTS idx_message_receipts_msg ON message_receipts(chat_jid, msg_id)`); err != nil {
 		return fmt.Errorf("ensure message receipts index: %w", err)
+	}
+	return nil
+}
+
+// ensureChatListTables adds the WhatsApp chat list (label) mirror. updated_at
+// holds the app-state action timestamp in unix milliseconds so replays and
+// out-of-order patches can be ordered; a removed member keeps its row with
+// labeled = 0 so a late, older "add" cannot bring it back.
+func ensureChatListTables(d *DB) error {
+	if _, err := d.sql.Exec(`
+		CREATE TABLE IF NOT EXISTS chat_lists (
+			label_id TEXT PRIMARY KEY,
+			name TEXT NOT NULL DEFAULT '',
+			type TEXT NOT NULL DEFAULT '',
+			color INTEGER NOT NULL DEFAULT 0,
+			predefined_id INTEGER NOT NULL DEFAULT 0,
+			order_index INTEGER NOT NULL DEFAULT 0,
+			deleted INTEGER NOT NULL DEFAULT 0,
+			is_active INTEGER NOT NULL DEFAULT 0,
+			is_immutable INTEGER NOT NULL DEFAULT 0,
+			updated_at INTEGER NOT NULL DEFAULT 0
+		)
+	`); err != nil {
+		return fmt.Errorf("ensure chat lists: %w", err)
+	}
+	if _, err := d.sql.Exec(`
+		CREATE TABLE IF NOT EXISTS chat_list_members (
+			label_id TEXT NOT NULL,
+			chat_jid TEXT NOT NULL,
+			labeled INTEGER NOT NULL DEFAULT 1,
+			updated_at INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY (label_id, chat_jid)
+		)
+	`); err != nil {
+		return fmt.Errorf("ensure chat list members: %w", err)
+	}
+	if _, err := d.sql.Exec(`CREATE INDEX IF NOT EXISTS idx_chat_list_members_chat ON chat_list_members(chat_jid)`); err != nil {
+		return fmt.Errorf("ensure chat list members index: %w", err)
 	}
 	return nil
 }

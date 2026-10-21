@@ -107,7 +107,8 @@ func (a *App) addSyncEventHandler(ctx context.Context, opts SyncOptions, message
 			lastEvent.Store(nowUTC().UnixNano())
 			a.handleLiveCallEvent(ctx, v)
 		case *events.AppState, *events.Star, *events.DeleteForMe,
-			*events.Archive, *events.Pin, *events.Mute, *events.MarkChatAsRead:
+			*events.Archive, *events.Pin, *events.Mute, *events.MarkChatAsRead,
+			*events.LabelEdit, *events.LabelAssociationChat:
 			lastEvent.Store(nowUTC().UnixNano())
 			a.handleAppStatePersistenceEvent(ctx, v, nil)
 		case *events.HistorySync:
@@ -373,6 +374,11 @@ func (a *App) persistAppStateEvent(ctx context.Context, evt any, tracker *appSta
 	switch v := evt.(type) {
 	case *events.AppState:
 		err = a.handleLiveCallEvent(ctx, v)
+		if favErr := a.handleFavoritesEvent(ctx, v); err == nil {
+			err = favErr
+		}
+	case *events.LabelEdit, *events.LabelAssociationChat:
+		err = a.handleChatListEvent(ctx, v)
 	case *events.Star:
 		err = a.handleStarEvent(ctx, v)
 	case *events.DeleteForMe:

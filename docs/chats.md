@@ -7,7 +7,7 @@ Read when: listing known chats, filtering chat state, archiving/pinning/muting/m
 ## Commands
 
 ```bash
-wacli chats list [--query TEXT] [--limit N] [--archived|--no-archived] [--pinned|--no-pinned] [--muted|--no-muted] [--unread|--no-unread]
+wacli chats list [--query TEXT] [--list LIST] [--limit N] [--archived|--no-archived] [--pinned|--no-pinned] [--muted|--no-muted] [--unread|--no-unread]
 wacli chats show --jid JID
 wacli chats archive --chat CHAT [--pick N]
 wacli chats unarchive --chat CHAT [--pick N]
@@ -70,3 +70,22 @@ wacli chats mark-read --chat family --pick 1
 wacli chats mark-read --chat family --pick 1 --receipts --json
 wacli chats cleanup --days 365 --dry-run
 ```
+
+## Chat lists
+
+Read when: reading the WhatsApp lists you built (Favorites, custom lists) or filtering chats by list.
+
+```bash
+wacli lists [--all]
+wacli lists members LIST
+wacli lists sync
+wacli chats list --list LIST
+```
+
+- Lists are read-only here. `sync` mirrors list names and membership from WhatsApp's app state into `wacli.db` (tables `chat_lists`, `chat_list_members`) as changes arrive; wacli never creates, renames, or fills a list.
+- `LIST` is a list id or a case-insensitive name. A name used by more than one list is an error that prints the candidate ids.
+- `lists` hides deleted lists unless `--all` is given. Counts are the chats currently in the list.
+- Favorites arrive from WhatsApp as one action rather than as a label, so they appear under the fixed id `favorites`.
+- `lists --json` returns an array of `{id, name, type, color, predefined_id, order_index, deleted, is_active, is_immutable, updated_at_ms, member_count}`. `lists members --json` returns `{list, members}` where members are `{jid, kind, name, last_message_ts}`; `name` and `kind` are empty for chats not yet in the local chat table.
+- An older patch never overwrites a newer one: rows carry the WhatsApp action time, and a removed chat keeps a tombstone.
+- `lists sync` asks WhatsApp for a full copy of the `regular` and `regular_high` collections through the same replay path chat-state commands use before a write. It needs the store lock, so it cannot run beside `sync --follow`; that process already keeps lists current, and a restart refetches `regular`. It changes nothing on the account.

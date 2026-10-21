@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Chats: mirror WhatsApp chat lists (labels and favorites) into the local store and add read-only `lists`, `lists members`, `lists sync`, and `chats list --list`.
 - Sync: add `--webhook-secret-file` to read the webhook HMAC secret from a private file instead of the process list.
 
 ## 0.21.0 - 2026-10-11

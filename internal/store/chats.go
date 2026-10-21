@@ -16,6 +16,8 @@ type ChatListFilter struct {
 	Pinned   *bool
 	Muted    *bool
 	Unread   *bool
+	// ListID limits results to chats currently in that chat list.
+	ListID string
 }
 
 func (d *DB) UpsertChat(jid, kind, name string, lastTS time.Time) error {
@@ -83,6 +85,10 @@ func (d *DB) ListChatsFiltered(f ChatListFilter) ([]Chat, error) {
 		} else {
 			q += ` AND unread = 0`
 		}
+	}
+	if strings.TrimSpace(f.ListID) != "" {
+		q += ` AND jid IN (SELECT chat_jid FROM chat_list_members WHERE label_id = ? AND labeled = 1)`
+		args = append(args, f.ListID)
 	}
 	q += ` ORDER BY pinned DESC, last_message_ts DESC LIMIT ?`
 	args = append(args, f.Limit)
