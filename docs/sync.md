@@ -11,7 +11,7 @@ Remote logout stops sync and emits `logged_out`; it retains the existing success
 ## Command
 
 ```bash
-wacli sync [--once] [--follow] [--idle-exit 30s] [--max-reconnect 5m] [--stale-threshold DURATION] [--presence-mode normal|quiet] [--send-spacing DURATION|MIN-MAX] [--max-messages N] [--max-db-size SIZE] [--download-media] [--refresh-contacts] [--refresh-groups] [--refresh-channels] [--events] [--webhook URL] [--webhook-secret SECRET | --webhook-secret-file PATH] [--webhook-events LIST]
+wacli sync [--once] [--follow] [--idle-exit 30s] [--max-reconnect 5m] [--stale-threshold DURATION] [--presence-mode normal|quiet] [--send-spacing DURATION|MIN-MAX] [--max-messages N] [--max-db-size SIZE] [--download-media | --download-rules PATH] [--refresh-contacts] [--refresh-groups] [--refresh-channels] [--events] [--webhook URL] [--webhook-secret SECRET | --webhook-secret-file PATH] [--webhook-events LIST]
 ```
 
 ## Modes
@@ -23,6 +23,7 @@ wacli sync [--once] [--follow] [--idle-exit 30s] [--max-reconnect 5m] [--stale-t
 - If WhatsApp revokes the linked session, sync emits a terminal `logged_out` event, cancels any reconnect already in progress, and exits cleanly. Re-pair with `wacli auth logout` followed by `wacli auth --phone`.
 - `--max-messages N` stops before storing more than `N` total messages locally.
 - `--max-db-size SIZE` stops when `wacli.db` plus SQLite sidecars reaches `SIZE` (`500MB`, `2GB`, etc.).
+- `--download-rules PATH` downloads only the live media that a JSON rules file selects, the moment it arrives, and trims old automatic downloads by size or age. The file is re-read when it changes. Mutually exclusive with `--download-media`; see [media](media.md#automatic-download-rules).
 - `--download-media` runs a bounded media downloader for sync events. Clean one-shot and bootstrap runs finish queued downloads before exiting; cancellation, errors, and storage-limit exits stop immediately.
 - `--send-spacing DURATION|MIN-MAX` paces serialized operations delegated to a running follow process. A single duration such as `2s` sets a fixed minimum gap; a range such as `500ms-5s` chooses a fresh random gap for each operation. It is disabled by default. With or without pacing, the caller's command timeout includes time queued behind earlier operations, pacing, and the operation itself; a request that is still queued when its caller's deadline is reached is refused with an explicit "it was not sent" error and is never dispatched later (#446). If the caller times out waiting for a reply after dispatch, the error says the operation may still have gone through, so check before retrying. Delegated `chats mark-read`, `chats mark-unread`, and `contacts check` share this queue and timeout budget; delegated archive, pin, and mute changes skip the queue and pacing but keep the same timeout budget.
 - `--refresh-contacts` imports contacts from the session store.

@@ -100,7 +100,13 @@ func (d *DB) MarkMediaUnavailable(ctx context.Context, chatJID, msgID string, at
 	})
 }
 
+// MarkMediaDownloaded records a download that was not made by the rule-based
+// automatic downloader. It also drops any automatic-download record for the
+// message, so a file the owner fetched by hand is never evicted.
 func (d *DB) MarkMediaDownloaded(chatJID, msgID, localPath string, downloadedAt time.Time) error {
+	if _, err := d.sql.Exec(`DELETE FROM media_auto_downloads WHERE chat_jid = ? AND msg_id = ?`, chatJID, msgID); err != nil {
+		return err
+	}
 	return d.q.MarkMediaDownloaded(storeCtx(), storedb.MarkMediaDownloadedParams{
 		LocalPath:    nullStringIfEmpty(localPath),
 		DownloadedAt: sqlNullInt64(unix(downloadedAt)),

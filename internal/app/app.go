@@ -137,6 +137,7 @@ type App struct {
 	heartbeatLast           atomic.Int64
 	groupInfo               groupInfoCache
 	presenceWatch           presenceWatch
+	autoDL                  atomic.Pointer[autoDownloader]
 }
 
 func New(opts Options) (*App, error) {

@@ -83,7 +83,7 @@ Write commands take a per-store lock. After a `sync --follow` process finishes s
 | [`auth`](docs/auth.md), [`accounts`](docs/accounts.md) | Pair a linked device and manage isolated account stores. |
 | [`sync`](docs/sync.md), [`history`](docs/history.md) | Mirror new events and request older per-chat history. |
 | [`messages`](docs/messages.md), [`calls`](docs/calls.md) | Search, inspect, export, and manage local records. |
-| [`send`](docs/send.md), [`media`](docs/media.md) | Send text and files or download synced media. |
+| [`send`](docs/send.md), [`media`](docs/media.md) | Send text and files, download synced media, or auto-download chosen media on arrival with `sync --download-rules`. |
 | [`contacts`](docs/contacts.md), [`chats`](docs/chats.md) | Find people and manage local or remote chat state. |
 | [`lists`](docs/chats.md#chat-lists) | Read your WhatsApp chat lists (Favorites, custom lists) and their chats. |
 | [`groups`](docs/groups.md), [`channels`](docs/channels.md) | Inspect and manage groups, communities, and channels. |

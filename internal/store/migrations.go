@@ -44,6 +44,7 @@ var schemaMigrations = []migration{
 	{version: 28, name: "unavailable app state keys", up: migrateUnavailableAppStateKeys},
 	{version: 29, name: "message receipts", up: ensureMessageReceiptsTable},
 	{version: 30, name: "chat lists", up: ensureChatListTables},
+	{version: 31, name: "media auto downloads", up: ensureMediaAutoDownloadsTable},
 }
 
 func migratePlaceholderChatActivity(d *DB) error {
@@ -180,6 +181,27 @@ func ensureChatListTables(d *DB) error {
 	}
 	if _, err := d.sql.Exec(`CREATE INDEX IF NOT EXISTS idx_chat_list_members_chat ON chat_list_members(chat_jid)`); err != nil {
 		return fmt.Errorf("ensure chat list members index: %w", err)
+	}
+	return nil
+}
+
+// ensureMediaAutoDownloadsTable records which local media files were fetched by
+// the rule-based automatic downloader, so size/age eviction can remove those
+// and never a file the owner downloaded by hand.
+func ensureMediaAutoDownloadsTable(d *DB) error {
+	if _, err := d.sql.Exec(`
+		CREATE TABLE IF NOT EXISTS media_auto_downloads (
+			chat_jid TEXT NOT NULL,
+			msg_id TEXT NOT NULL,
+			local_path TEXT NOT NULL,
+			size_bytes INTEGER NOT NULL DEFAULT 0,
+			rule TEXT NOT NULL DEFAULT '',
+			downloaded_at INTEGER NOT NULL DEFAULT 0,
+			evicted_at INTEGER,
+			PRIMARY KEY (chat_jid, msg_id)
+		)
+	`); err != nil {
+		return fmt.Errorf("ensure media auto downloads: %w", err)
 	}
 	return nil
 }

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Media: add `sync --download-rules PATH` to download only rule-selected live media on arrival (by chat, kind, chat list, type, extension, MIME, and size), with a hot-reloaded rules file, total-size and age limits that evict only automatic downloads, and offline `media rules check` / `media rules test`.
 - Chats: mirror WhatsApp chat lists (labels and favorites) into the local store and add read-only `lists`, `lists members`, `lists sync`, and `chats list --list`.
 - Sync: add `--webhook-secret-file` to read the webhook HMAC secret from a private file instead of the process list.
 

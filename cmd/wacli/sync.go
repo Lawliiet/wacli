@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ func newSyncCmd(flags *rootFlags) *cobra.Command {
 	var staleThreshold time.Duration
 	var presenceModeFlag string
 	var downloadMedia bool
+	var downloadRules string
 	var refreshContacts bool
 	var refreshGroups bool
 	var refreshChannels bool
@@ -44,6 +46,16 @@ func newSyncCmd(flags *rootFlags) *cobra.Command {
 			maxMessages, maxDBSize, err := resolveSyncStorageLimits(storage)
 			if err != nil {
 				return err
+			}
+			if downloadRules != "" {
+				if downloadMedia {
+					return fmt.Errorf("--download-rules and --download-media are mutually exclusive; the rules decide what is downloaded")
+				}
+				abs, err := filepath.Abs(downloadRules)
+				if err != nil {
+					return fmt.Errorf("--download-rules: %w", err)
+				}
+				downloadRules = abs
 			}
 			if webhookSecret != "" && webhookSecretFile != "" {
 				return fmt.Errorf("--webhook-secret and --webhook-secret-file are mutually exclusive")
@@ -127,6 +139,7 @@ func newSyncCmd(flags *rootFlags) *cobra.Command {
 				AllowQR:             false,
 				AfterConnect:        afterConnect,
 				DownloadMedia:       downloadMedia,
+				DownloadRules:       downloadRules,
 				RefreshContacts:     refreshContacts,
 				RefreshGroups:       refreshGroups,
 				RefreshChannels:     refreshChannels,
@@ -164,6 +177,7 @@ func newSyncCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&presenceModeFlag, "presence-mode", string(appPkg.SyncPresenceModeNormal), "global sync presence behavior: normal or quiet")
 	cmd.Flags().StringVar(&sendSpacingFlag, "send-spacing", "", "pace delegated sends in follow mode by a fixed duration or random min-max range (e.g. 2s or 500ms-5s; default: disabled)")
 	cmd.Flags().BoolVar(&downloadMedia, "download-media", false, "download media in the background during sync")
+	cmd.Flags().StringVar(&downloadRules, "download-rules", "", "JSON file of rules choosing which live media to download on arrival; re-read when it changes (see `wacli media rules check`)")
 	cmd.Flags().BoolVar(&refreshContacts, "refresh-contacts", false, "refresh contacts from session store into local DB")
 	cmd.Flags().BoolVar(&refreshGroups, "refresh-groups", false, "refresh joined groups and participant snapshots (live)")
 	cmd.Flags().BoolVar(&refreshChannels, "refresh-channels", false, "refresh subscribed channels (live) into local DB")

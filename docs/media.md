@@ -10,6 +10,8 @@ Read when: downloading media from a synced message.
 wacli media download --chat JID --id MSG_ID [--output PATH]
 wacli media backfill [--chat JID] [--limit N] [--workers N]
 wacli media retry [--chat JID] [--type TYPE] [--before YYYY-MM-DD] [--limit N] [--batch N] [--wait DUR]
+wacli media rules check PATH
+wacli media rules test PATH --chat JID --type TYPE [--size N] [--ext EXT] [--mime MIME] [--in-list LIST]...
 ```
 
 ## download
@@ -103,3 +105,66 @@ wacli media retry --before 2026-01-01                # only media older than a d
 wacli media retry --type audio                       # only audio, voice notes included
 wacli media retry --limit 50 --wait 45s --json       # bounded run, machine-readable
 ```
+
+## Automatic download rules
+
+Senders sometimes delete a message, and once it is deleted WhatsApp's servers
+usually refuse the media download. `wacli sync --download-rules PATH` fetches the
+media you choose the moment it arrives, so a later deletion cannot take it away.
+`--download-media` (everything, no filter) keeps working unchanged; the two flags
+are mutually exclusive.
+
+The rules file is JSON and is re-read whenever its mtime or size changes, so
+another program can edit it while `sync --follow` runs. An invalid edit keeps the
+last good rules and logs a `download_rules_invalid` warning; a missing file means
+nothing is downloaded automatically. The file is validated strictly: unknown keys
+are errors.
+
+```json
+{
+  "version": 1,
+  "rules": [
+    {"name": "dms", "match": {"kind": "dm"}, "types": ["image", "video", "audio", "document"], "extensions": ["pdf", "zip"], "max_bytes": 26214400},
+    {"name": "family", "match": {"list": "Family"}, "types": ["image", "video"], "max_bytes": 52428800},
+    {"name": "one group", "match": {"chat": "1203...@g.us"}, "types": ["document"], "max_bytes": 10485760},
+    {"name": "no groups", "match": {"kind": "group"}, "download": false}
+  ],
+  "limits": {"total_bytes": 5368709120, "keep_days": 90}
+}
+```
+
+- `match` keys are ANDed; an empty `match` is any chat. Each key takes one string or a list (any of).
+  - `chat`: chat JIDs.
+  - `kind`: `dm`, `group`, `channel`, `status`.
+  - `list`: a chat list id or name, resolved through the local chat lists (`wacli lists`) when the message arrives. An id survives renames; an unknown, deleted, or ambiguous name never matches.
+- Filters, also ANDed with `match`: `types` (`image`, `video`, `gif`, `audio`, `sticker`, `document`; voice notes are recorded as `audio`), `extensions` (from the file name, or from the MIME type when there is no name), `mime` (globs such as `application/pdf` or `video/*`), `max_bytes` (the message's declared file length; an unknown size passes).
+- `"download": false` makes a matching message an exclusion.
+- The first rule whose match and filters all pass wins; order matters. A message that fails a rule's filters falls through to the next rule. No match means no download.
+- Status broadcasts are never downloaded unless a rule names them with `kind: "status"` or their JID in `chat`; an empty `match` does not include them.
+- Only live messages are considered. Messages that arrive through history sync are not downloaded by the rules (use `media backfill`).
+
+### Limits
+
+`limits.total_bytes` and `limits.keep_days` bound the files the rules downloaded.
+When either is exceeded, the oldest automatically downloaded files are deleted
+(on start, after each automatic download, and hourly). Only the files go: the
+message rows, text, and media metadata stay, and `local_path`/`downloaded_at` are
+cleared so `media download` or `media backfill` can fetch the file again if the
+server still has it. Eviction never touches:
+
+- files downloaded by hand (`media download`, `media backfill`, or `sync --download-media`); the store records which downloads were automatic, and a manual download of a message removes it from that record;
+- files of messages the sender has since deleted. Those still count toward `total_bytes`, so a store full of deleted-message media can sit above the cap.
+
+### rules check / rules test
+
+Both work offline, without opening the store.
+
+- `media rules check PATH [--json]` validates the file and prints the parsed, normalized rules.
+- `media rules test PATH --chat JID --type TYPE [--size N] [--ext EXT] [--mime MIME] [--kind KIND] [--in-list LIST]... [--json]` says which rule an imagined message matches. The chat kind comes from the JID. List membership is not looked up; pass `--in-list` (same id or name as in the rule) to pretend the chat is in a list.
+
+### Events and debugging
+
+With `sync --events`, each decision is a `media_auto_decision` event, each finished
+download a `media_auto_downloaded` event with a running total, and each eviction
+pass a `media_auto_evicted` event. Without `--events`, set `WACLI_DEBUG=1` to print
+decisions to stderr.

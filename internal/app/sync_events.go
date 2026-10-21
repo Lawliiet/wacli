@@ -605,8 +605,12 @@ func (a *App) handleLiveSyncMessage(ctx context.Context, opts SyncOptions, v *ev
 		}
 		a.handlePollSideEffects(sideEffectCtx, pm, v)
 	}
-	if opts.DownloadMedia && pm.Media != nil && pm.ID != "" {
-		enqueueMedia(canonicalJIDString(a.canonicalStoreJID(ctx, pm.Chat)), pm.ID)
+	if pm.Media != nil && pm.ID != "" {
+		if opts.DownloadMedia {
+			enqueueMedia(canonicalJIDString(a.canonicalStoreJID(ctx, pm.Chat)), pm.ID)
+		} else if ad := a.autoDL.Load(); ad != nil {
+			ad.consider(ctx, pm, canonicalJIDString(a.canonicalStoreJID(ctx, pm.Chat)))
+		}
 	}
 }
 

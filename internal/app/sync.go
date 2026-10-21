@@ -65,6 +65,7 @@ type SyncOptions struct {
 	OnPairCode          func(string)
 	AfterConnect        func(context.Context) error
 	DownloadMedia       bool
+	DownloadRules       string // path of a download rules file; live messages only
 	RefreshContacts     bool
 	RefreshGroups       bool
 	RefreshChannels     bool
@@ -149,12 +150,22 @@ func (a *App) Sync(ctx context.Context, opts SyncOptions) (SyncResult, error) {
 	var waitMedia func(context.Context) bool
 	var mediaQ *mediaQueue
 	enqueueMedia := func(chatJID, msgID string) {}
-	if opts.DownloadMedia {
+	if opts.DownloadMedia && opts.DownloadRules != "" {
+		return SyncResult{}, fmt.Errorf("download media and download rules cannot be combined; rules decide what is downloaded")
+	}
+	if opts.DownloadMedia || opts.DownloadRules != "" {
 		mediaQ = newMediaQueue(512)
 		enqueueMedia = newMediaEnqueuer(syncCtx, mediaQ)
 	}
+	if opts.DownloadRules != "" {
+		ad := a.newAutoDownloader(opts.DownloadRules, mediaQ)
+		a.autoDL.Store(ad)
+		defer a.autoDL.Store(nil)
+		ad.src.Current() // surface a missing or invalid file at startup
+		go ad.run(syncCtx)
+	}
 
-	if opts.DownloadMedia {
+	if opts.DownloadMedia || opts.DownloadRules != "" {
 		wait, cancelMedia, err := a.runMediaWorkers(syncCtx, mediaQ, 4)
 		if err != nil {
 			return SyncResult{}, err

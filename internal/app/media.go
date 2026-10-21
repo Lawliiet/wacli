@@ -19,6 +19,9 @@ import (
 type mediaJob struct {
 	chatJID string
 	msgID   string
+	// auto marks a download chosen by the download rules; rule names the rule.
+	auto bool
+	rule string
 }
 
 type mediaQueue struct {
@@ -247,11 +250,21 @@ func (a *App) downloadMediaJob(ctx context.Context, job mediaJob) (downloaded bo
 		return false, err
 	}
 
-	if _, err := a.wa.DownloadMediaToFile(ctx, info.DirectPath, info.FileEncSHA256, info.FileSHA256, info.MediaKey, info.FileLength, info.MediaType, "", targetPath); err != nil {
+	n, err := a.wa.DownloadMediaToFile(ctx, info.DirectPath, info.FileEncSHA256, info.FileSHA256, info.MediaKey, info.FileLength, info.MediaType, "", targetPath)
+	if err != nil {
 		return false, err
 	}
 
 	now := nowUTC()
+	if job.auto {
+		if err := a.db.RecordAutoDownload(info.ChatJID, info.MsgID, targetPath, job.rule, n, now); err != nil {
+			return false, err
+		}
+		if ad := a.autoDL.Load(); ad != nil {
+			ad.afterDownload(job)
+		}
+		return true, nil
+	}
 	if err := a.db.MarkMediaDownloaded(info.ChatJID, info.MsgID, targetPath, now); err != nil {
 		return false, err
 	}
