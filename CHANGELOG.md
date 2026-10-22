@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Sync: keep an incoming 1:1 revoke or edit in the sender's chat and direction instead of filing it under your own chat as a sent message, so the original message is tombstoned or updated.
+- Store: add `store repair-revokes` (dry run by default) to move revokes that older versions filed under your own chat onto the original messages, keeping their text and media.
 
 ## 0.24.0 - 2026-10-21
 
