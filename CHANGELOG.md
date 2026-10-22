@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Sync: keep an incoming 1:1 revoke or edit in the sender's chat and direction instead of filing it under your own chat as a sent message, so the original message is tombstoned or updated.
+
 ## 0.24.0 - 2026-10-21
 
 - Send: quote file, voice, and sticker replies with stored text or media content, resolve phone/LID identities, and reject missing or unusable direct-chat quote targets before upload. Thanks @larskluge (#506).
